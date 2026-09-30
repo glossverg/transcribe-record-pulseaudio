@@ -5,12 +5,21 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime
-from typing import Callable, Sequence, Tuple, ClassVar, Protocol, Optional, Type
+from typing import Callable, Sequence, Tuple, ClassVar, Protocol, Optional, Type, Dict
 from dataclasses import dataclass
 import logging
 import shlex
 
 # Standalone open source
+
+def main():
+  return transcribeRecordApplicationAudioScriptExample1()
+
+def transcribeRecordApplicationAudioScriptExample1(self):
+  script = AppAudioRecordTranscribe(); script.stereoRecordTranscribeApp(); return script
+
+def recordApplicationAudioScriptExample1(self):
+  script = AppAudioRecord(); script.stereoRecordApp(); return script
 
 """
 Some terms:
@@ -114,8 +123,8 @@ class FileLogger:
   def error(self, msg: str) -> "Self": self.logger.error(msg); return self
   # helpers
   def setup(self):
-    self.avoidDuplicateConsolePrintsIfRootLoggerActive(); self.cleanUpFileHandlers(); self.createFileHandlers()
-    self.addConsoleHandler(); return self
+    self.avoidDuplicateConsolePrintsIfRootLoggerActive(); self.cleanUpFileHandlers();
+    formatter = self.createFileHandlers(); self.addConsoleHandler(formatter); return self
   def avoidDuplicateConsolePrintsIfRootLoggerActive(self): self.logger.propagate = False; return self
   def cleanUpFileHandlers(self):
     for handler in list(self.logger.handlers):
@@ -124,16 +133,18 @@ class FileLogger:
   def createFileHandlers(self):
     file_handler = logging.FileHandler(self.logFile, mode="a")
     file_handler.setLevel(self.level)  # Handlers MUST match the lower level!
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-    file_handler.setFormatter(formatter); self.logger.addHandler(file_handler); return self
-  def addConsoleHandler(self): 
+    formatter = self.createLoggerFormatter(); file_handler.setFormatter(formatter)
+    self.logger.addHandler(file_handler); return formatter
+  def addConsoleHandler(self, formatter): 
     if not any(isinstance(h, logging.StreamHandler) for h in self.logger.handlers):
       console_handler = logging.StreamHandler(); console_handler.setLevel(self.level)
       console_handler.setFormatter(formatter); self.logger.addHandler(console_handler)
     return self
+  def createLoggerFormatter(self):
+    return logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
   def simpleSetup(self):
     if not self.logger.handlers:
-      file_handler = logging.FileHandler(logFile)
+      file_handler = logging.FileHandler(self.logFile)
       formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
       file_handler.setFormatter(formatter); self.logger.addHandler(file_handler)
     return self
@@ -201,18 +212,12 @@ class SystemShell:
 
 @dataclass(frozen=True)
 class AudioConfig:
-  outputAudioFileStem: str="appAudioRecordByScript"
-  microphoneDeviceNameKeyword: str="SomeDevice"
-  speakerDeviceNameKeyword: str="SomeDevice"
-  playbackCaptureApplicationNameKeywords=["chrome"]
-  recorderApplicationNameKeywords=["ffmpeg", "lavf"]
-  sinkName: str="call_mix"
-  whisperCppDir: str="path/to/whisper.cpp"
-  logFileStem = "audioPipelineLog"
-  loggerType=FileLogger
-  shellType=SystemShell
-  timestampFormat: str="%Y%m%d_%H%M%S"
-  default = None
+  outputAudioFileStem: str="appAudioRecordByScript"; outputTranscribeFileStem: str="transcribeAppByScript"
+  microphoneDeviceNameKeyword: str="SomeDevice"; speakerDeviceNameKeyword: str="SomeDevice"
+  playbackCaptureApplicationNameKeywords=["chrome"]; recorderApplicationNameKeywords=["ffmpeg", "lavf"]
+  sinkName: str="call_mix"; whisperCppDir: str="path/to/whisper.cpp"; whisperModelName: str="base.en"
+  logFileStem = "audioPipelineLog"; loggerType=FileLogger; shellType=SystemShell
+  timestampFormat: str="%Y%m%d_%H%M%S"; default = None
   @classmethod
   def timestamp(cls, timestampFormat: str) -> str: return datetime.now().strftime(timestampFormat)
 # class AudioConfig
@@ -222,21 +227,26 @@ class ScriptLogShell:
   "Encapsulates logging, shell execution, and output file paths."
   def __init__(self, confType=Conf, loggerType: Type[LoggerProtocol]=Conf.loggerType,
    shellType: Type[ShellProtocol]=Conf.shellType, outputAudioFileStem: str=Conf.outputAudioFileStem,
-   logFileStem: str=Conf.logFileStem, timestampFormat: str=Conf.timestampFormat):
+   transcribeFileStem: str=Conf.outputTranscribeFileStem, logFileStem: str=Conf.logFileStem,
+   timestampFormat: str=Conf.timestampFormat):
     super().__init__(); self.loggerType = loggerType; self.shellType= shellType;
-    self.outputAudioFileStem = outputAudioFileStem; self.logFileStem = logFileStem
-    self.timestampFormat = timestampFormat; self.refresh()
-  def refresh(self) -> None:
+    self.outputAudioFileStem = outputAudioFileStem; self.transcribeFileStem = transcribeFileStem
+    self.logFileStem = logFileStem; self.timestampFormat = timestampFormat; self.refresh()
+  def refresh(self) -> "Self":
     "Generates a fresh timestamp and updates all log/audio paths and log handlers."
     self.timestamp = datetime.now().strftime(self.timestampFormat); self.logFile = self.logFileName()
     self.logger = self.loggerType(logFile=self.logFile); self.shell = self.shellType(logger=self.logger)
-    self.refreshOutputAudioFile(self.timestamp)
+    self.refreshOutputAudioFile(self.timestamp); self.refreshTranscribeFile(self.timestamp); return self
   def logFileName(self, timestampStr: str=None) -> str:
     return self.fileFromStem(self.logFileStem, "txt", timestampStr)
   def refreshOutputAudioFile(self, timestampStr: str=None) -> str:
     self.outputAudioFile = self.outputAudioFileName(timestampStr); return self
   def outputAudioFileName(self, timestampStr: str=None) -> str:
     return self.fileFromStem(self.outputAudioFileStem, "wav", timestampStr)
+  def refreshTranscribeFile(self, timestampStr: str=None) -> str:
+    self.transcribeFile = self.transcribeFileName(timestampStr); return self
+  def transcribeFileName(self, timestampStr: str=None):
+    return self.fileFromStem(self.transcribeFileStem, "txt", timestampStr)
   def fileFromStem(self, fileStem: str, fileExt: str, timestampStr: str=None) -> str:
     timestampStr = timestampStr or Conf.timestamp(self.timestampFormat)
     return f"{fileStem}_{timestampStr}.{fileExt}"
@@ -281,16 +291,19 @@ class AppRecordBase:
 # class AppRecordBase
 
 class AppAudioRecordTranscribe(AppRecordBase):
-  def __init__(self, outputAudioFileStem=Conf.outputAudioFileStem,
+  def __init__(self, outputAudioFileStem: str=Conf.outputAudioFileStem,
+   transcribeLiveStreamFileStem: str=Conf.outputTranscribeFileStem,
    microphoneDeviceNameKeyword: str=Conf.microphoneDeviceNameKeyword,
    speakerDeviceNameKeyword: str=Conf.speakerDeviceNameKeyword,
    playbackCaptureApplicationNameKeywords: list[str]=Conf.playbackCaptureApplicationNameKeywords,
    recorderApplicationNameKeywords: list[str]=Conf.recorderApplicationNameKeywords,
    whisperCppDir: str=Conf.whisperCppDir):
-    super().__init__(); self.scriptLogShellFileRuntime = ScriptLogShell()
+    super().__init__()
+    self.scriptLogShellFileRuntime = ScriptLogShell(outputAudioFileStem=outputAudioFileStem,
+     transcribeFileStem=transcribeLiveStreamFileStem)
     self.mixer = PulseAudioMixer(logShell=self.scriptLogShellFileRuntime)
     self.recorder = AudioCapture(self.scriptLogShellFileRuntime)
-    self.transcriber = AudioTranscription(whisperCppDir=whisperCppDir)
+    self.transcriber = AudioTranscription(whisperCppDir=whisperCppDir, logShell=self.scriptLogShellFileRuntime)
     self.micKeyword = microphoneDeviceNameKeyword; self.speakerKeyword = speakerDeviceNameKeyword
     self.playbackAppKeywords = playbackCaptureApplicationNameKeywords
     self.recordAppKeywords = recorderApplicationNameKeywords
@@ -301,20 +314,19 @@ class AppAudioRecordTranscribe(AppRecordBase):
     except KeyboardInterrupt: print(f"Recording stopped by key interrupt")
     finally:
       print(f"Loaded PulseAudio module ids upon stop {self.mixer.loadedModules}")
-      self.transcriber.stopLiveStream()
-      self.recorder.stopRecording(); self.mixer.unloadPulseaudioModulesCreatedBySession()
+      self.transcriber.stopLiveStream(); self.recorder.stopRecording()
+      self.mixer.unloadPulseaudioModulesCreatedBySession()
+      self.transcriber.postprocessStereoHostUserAudioToFile(self.scriptLogShellFileRuntime.outputAudioFile)
     return self
   def stereoRecordTranscribeAppStart(self) -> "Self":
     self.scriptLogShellFileRuntime.refresh()
     self.mixer.createCallMixNullSinkAndLoopbacksByKeyword(self.micKeyword, self.speakerKeyword)
-    self.waitForPulseaudioConfigToSetup()
-    self.recorder.startStereoRecord(self.captureInputSourceName())
+    self.waitForPulseaudioConfigToSetup(); self.recorder.startStereoRecord(self.captureInputSourceName())
     self.waitForRecorderToRegisterInPulseaudio()
     appList = self.mixer.routeAppPlaybackToCallMix(self.playbackAppKeywords)
     recorderList = self.mixer.routeAppRecordingToCallMixMonitor(self.recordAppKeywords)
-    self.transcriber.startLiveStream("interview_live.txt")
-    self.startupTracePrintLog(appList, recorderList)
-    return self
+    self.transcriber.startLiveStream(self.scriptLogShellFileRuntime.transcribeFile)
+    self.startupTracePrintLog(appList, recorderList); return self
 # class AppAudioRecordTranscribe
 
 class AppAudioRecord(AppRecordBase):
@@ -516,109 +528,73 @@ class AudioCapture(LogShellUser):
     return True
 # class AudioCapture
 
-class AudioTranscription:
+class AudioTranscription(LogShellUser):
   "Manages whisper-stream live transcription and post-call Python Whisper execution."
-  def __init__(self, whisperCppDir: str):
-    super().__init__()
-    self.whisperCppDir = Path(whisperCppDir).resolve()
-    self.stream_bin = self.whisperCppDir / "build" / "bin" / "whisper-stream"
-    self.stream_process = None
+  def __init__(self, whisperCppDir: str=Conf.whisperCppDir, logShell: ScriptLogShell=ScriptLogShell()):
+    super().__init__(logShell); self.whisperCppDir = Path(whisperCppDir).resolve()
+    self.stream_bin = self.whisperCppDir / "build" / "bin" / "whisper-stream"; self.stream_process = None
   def launchTranscription(self, outputTextFile: str):
     return self.launchTranscriptionBasic(outputTextFile)
   def launchTranscriptionBasic(self, outputTextFile: str):
     return self.startLiveStream(outputTextFile, threads=3, audioStepSizeMilliseconds=3000,
      audioLengthMilliseconds=12000, audioToKeepFromPreviousStepMilliseconds=2000)
-  def launchTranscriptionOtherWay(self):
+  def launchTranscriptionOtherWay(self, outputTextFile: str):
     return self.startLiveStream(outputTextFile, threads=2, audioStepSizeMilliseconds=3000,
      audioLengthMilliseconds=10000)
-  def launchTranscriptionNearerRealTime(self):
+  def launchTranscriptionNearerRealTime(self, outputTextFile: str):
     return self.startLiveStream(outputTextFile, threads=4, audioStepSizeMilliseconds=1000,
      audioLengthMilliseconds=3000, audioToKeepFromPreviousStepMilliseconds=200,)
-  def startLiveStream(self, outputTextFile: str="interview_live.txt",
+  def startLiveStream(self, outputTextFile: str=None,
    model_path: str = "models/ggml-base.en.bin", threads: int = 4, audioStepSizeMilliseconds: int = 3000,
    audioLengthMilliseconds: int = 12000, audioToKeepFromPreviousStepMilliseconds: int = 2000,
    voiceActivityDectionThreshold: float = 0.6,):
     "Launches whisper-stream in the background with optimized CPU parameters."
+    outputTextFile = outputTextFile or self.logShell.transcribeFile
     abs_model = self.whisperCppDir / model_path
     cmd = [str(self.stream_bin), "-m", str(abs_model), "-t", str(threads),
      "--step", str(audioStepSizeMilliseconds),
      "--length", str(audioLengthMilliseconds), "--keep", str(audioToKeepFromPreviousStepMilliseconds),
      "-vth", str(voiceActivityDectionThreshold), "-f", outputTextFile,]
-    print(f"[AudioTranscription] Launching whisper-stream logging to {outputTextFile}...")
-    self.stream_process = popen(cmd, cwd=str(self.whisperCppDir))
+    self.logInfo(f"[AudioTranscription] Launching whisper-stream logging to {outputTextFile}...")
+    self.stream_process = self.shSpawn(cmd, cwd=str(self.whisperCppDir))
     return self
   def stopLiveStream(self):
     "Stops the live whisper-stream process."
     if self.stream_process and self.stream_process.poll() is None:
-      print("[AudioTranscription] Stopping whisper-stream...")
+      self.logInfo("[AudioTranscription] Stopping whisper-stream...")
       self.stream_process.terminate()
       self.stream_process.wait()
-  @classmethod
-  def processStereoPostCall(cls, wav_path: str, model_name: str = "base.en") -> dict:
+  def postprocessStereoHostUserAudioToFile(self, audioWavFile: str, whisperModelName: str=Conf.whisperModelName,
+   outputTextFile: str=Conf.outputTranscribeFileStem + "_combine.txt") -> Dict[str, str]:
+    if Path(self.logShell.outputAudioFile).exists():
+      result = self.processStereoPostCall(audioWavFile)
+      self.combineAndSaveSteroPostProcessFile(result, outputTextFile)
+    return result
+  def processStereoPostCall(self, wav_path: str, whisperModelName: str=Conf.whisperModelName) -> Dict[str, str]:
     "Splits stereo WAV into L/R channels and transcribes both with OpenAI Whisper."
     import whisper
     wav_file = Path(wav_path)
     left_wav = wav_file.parent / f"{wav_file.stem}_left.wav"
     right_wav = wav_file.parent / f"{wav_file.stem}_right.wav"
-    print("[Post-Process] Splitting stereo file into Left and Right channels...")
-    sh(f"ffmpeg -y -i {wav_path} -map_channel 0.0.0 {left_wav} -map_channel 0.0.1 {right_wav}")
-    print(f"[Post-Process] Loading Python Whisper model ({model_name})...")
-    model = whisper.load_model(model_name)
-    print("[Post-Process] Transcribing Interviewer channel (Left)...")
-    interviewer = model.transcribe(str(left_wav))
-    print("[Post-Process] Transcribing Candidate channel (Right)...")
-    candidate = model.transcribe(str(right_wav))
-    return {"interviewer": interviewer, "candidate": candidate}
+    self.logInfo("[Post-Process] Splitting stereo file into Left and Right channels...")
+    self.shRun(f"ffmpeg -y -i {wav_path} -map_channel 0.0.0 {left_wav} -map_channel 0.0.1 {right_wav}")
+    self.logInfo(f"[Post-Process] Loading Python Whisper model ({whisperModelName})...")
+    model = whisper.load_model(whisperModelName)
+    self.logInfo("[Post-Process] Transcribe Host channel (Left)...")
+    host = model.transcribe(str(left_wav))
+    self.logInfo("[Post-Process] Transcribe User channel (Right)...")
+    user = model.transcribe(str(right_wav))
+    return {"host": host, "user": user}
+  def combineAndSaveSteroPostProcessFile(self, stereoHostUserPostprocess: Dict[str, str], outputTextFile: str): 
+    r = stereoHostUserPostprocess
+    self.logInfo("\n=== Post-Call Transcript Output ===")
+    with open(outputTextFile, "w+") as f:
+      f.write("--- HOST ---\n"); f.write(r["host"]["text"] + "\n\n")
+      f.write("--- USER ---\n"); f.write(r["user"]["text"] + "\n")
+    self.logInfo(f"Final processed transcript saved to {outputTextFile}"); return self
 # class AudioTranscription
-
-def sh(command: str, stringsWithSpaces: list[str] = None) -> Tuple[str, str]:
-  "public fn to run the given string as a shell command and return both stdout and stderr."
-  from subprocess import Popen, PIPE
-  print(f"Run command in shell '{command}'")
-  process = Popen(tokenizeByWhitespace(command, stringsWithSpaces), stdout=PIPE, stderr=PIPE)
-  stdout, stderr = process.communicate(); returnCode = process.poll()
-  if returnCode != 0: raise Exception(f"Command failed in shell? Return code of {returnCode}?"
-                                      f"\nstdout:{stdout}\nstderr:{stderr}\n")
-  return stdout.decode(encoding="utf-8"), stderr.decode(encoding="utf-8")
-
-def popen(commandList: list[str], *args, **kwargs):
-  "public fn to run given string list as space sep'd shell command and return pid"
-  cmd = " ".join(map(str, commandList)); print(f"Run command in shell '{cmd}'")
-  return subprocess.Popen(commandList, *args, **kwargs)
 
 
 # Example Pipeline Execution Script
 if __name__ == "__main__":
-  # Specify your path to whisper.cpp
-  WHISPER_DIR = Conf.whisperCppDir
-  mixer = PulseAudioMixer()
-  recorder = AudioCapture("interview_call_raw.wav")
-  transcriber = AudioTranscription(whisperCppDir=WHISPER_DIR)
-
-  try:
-    # 1. Initialize PulseAudio routing
-    mixer.createCallMixNullSinkAndLoopbacksByKeyword()
-    # 2. Start dual-channel raw recording
-    recorder.startStereoRecord()
-    # 3. Start live stream transcription (with optimized 12s/3s windowing)
-    transcriber.startLiveStream("interview_live.txt")
-    print("\n--- Live Session Active. Press Ctrl+C to stop interview session. ---\n")
-    while True: time.sleep(1)
-  except KeyboardInterrupt:
-    print("\nSession interrupted by user.")
-  finally:
-    # Cleanup processes
-    transcriber.stopLiveStream()
-    recorder.stopRecording()
-    mixer.unloadPulseaudioModulesCreatedBySession()
-    # Post-process stereo channels for clean RAG ingestion
-    if Path("interview_call_raw.wav").exists():
-      results = AudioTranscription.processStereoPostCall("interview_call_raw.wav")
-      # Combine and print/save transcript
-      print("\n=== Post-Call Transcript Output ===")
-      with open("interview_processed_final.txt", "w") as f:
-        f.write("--- INTERVIEWER ---\n")
-        f.write(results["interviewer"]["text"] + "\n\n")
-        f.write("--- CANDIDATE ---\n")
-        f.write(results["candidate"]["text"] + "\n")
-      print("Final processed transcript saved to interview_processed_final.txt")
+  main()
