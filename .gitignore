@@ -1,0 +1,20 @@
+# Runtime artifacts
+*.wav
+*.log
+*_live.txt
+*_final.txt
+
+# whisper.cpp models (large binaries)
+models/
+*.bin
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
