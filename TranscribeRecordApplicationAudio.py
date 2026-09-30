@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import Callable, Sequence, Tuple, ClassVar, Protocol, Optional, Type, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import shlex
 
@@ -214,7 +214,8 @@ class SystemShell:
 class AudioConfig:
   outputAudioFileStem: str="appAudioRecordByScript"; outputTranscribeFileStem: str="transcribeAppByScript"
   microphoneDeviceNameKeyword: str="SomeDevice"; speakerDeviceNameKeyword: str="SomeDevice"
-  playbackCaptureApplicationNameKeywords=["chrome"]; recorderApplicationNameKeywords=["ffmpeg", "lavf"]
+  playbackCaptureApplicationNameKeywords: tuple=("chrome",)
+  recorderApplicationNameKeywords: tuple=("ffmpeg", "lavf")
   sinkName: str="call_mix"; whisperCppDir: str="path/to/whisper.cpp"; whisperModelName: str="base.en"
   logFileStem = "audioPipelineLog"; loggerType=FileLogger; shellType=SystemShell
   timestampFormat: str="%Y%m%d_%H%M%S"; default = None
@@ -254,8 +255,8 @@ class ScriptLogShell:
 
 class LogShellUser:
   "Short-hand helper methods to use inside class implementation"
-  def __init__(self, logShell: ScriptLogShell=ScriptLogShell()):
-    super().__init__(); self.logShell = logShell
+  def __init__(self, logShell: ScriptLogShell=None):
+    super().__init__(); self.logShell = logShell or ScriptLogShell()
   def logDebug(self, msg: str): return self.logShell.logger.debug(msg)
   def logInfo(self, msg: str): return self.logShell.logger.info(msg)
   def logWarn(self, msg: str): return self.logShell.logger.warning(msg)
@@ -291,6 +292,7 @@ class AppRecordBase:
 # class AppRecordBase
 
 class AppAudioRecordTranscribe(AppRecordBase):
+  "Encapsulate script run recording with live transcribe application audio by PulseAudio config and AI"
   def __init__(self, outputAudioFileStem: str=Conf.outputAudioFileStem,
    transcribeLiveStreamFileStem: str=Conf.outputTranscribeFileStem,
    microphoneDeviceNameKeyword: str=Conf.microphoneDeviceNameKeyword,
@@ -330,7 +332,7 @@ class AppAudioRecordTranscribe(AppRecordBase):
 # class AppAudioRecordTranscribe
 
 class AppAudioRecord(AppRecordBase):
-  "Encapsulate script run recording browser audio by PulseAudio config"
+  "Encapsulate script run recording application audio by PulseAudio config"
   def __init__(self, microphoneDeviceNameKeyword: str=Conf.microphoneDeviceNameKeyword,
    speakerDeviceNameKeyword: str=Conf.speakerDeviceNameKeyword,
    playbackCaptureApplicationNameKeywords: list[str]=Conf.playbackCaptureApplicationNameKeywords,
@@ -367,7 +369,7 @@ class AppAudioRecord(AppRecordBase):
 # Script components
 class PulseAudioMixer(LogShellUser):
   """Manages PulseAudio virtual sink and loopbacks for call recording."""
-  def __init__(self, sinkName: str=Conf.sinkName, logShell: ScriptLogShell=ScriptLogShell()):
+  def __init__(self, sinkName: str=Conf.sinkName, logShell: ScriptLogShell=None):
     super().__init__(logShell); self.sinkName = sinkName; self.loadedModules = []
   # setup, device routes
   # main setup routines
@@ -500,7 +502,7 @@ class PulseAudioMixer(LogShellUser):
 
 class AudioCapture(LogShellUser):
   "Handles audio recording via FFmpeg."
-  def __init__(self, logShell: ScriptLogShell=ScriptLogShell()):
+  def __init__(self, logShell: ScriptLogShell=None):
     super().__init__(logShell); self.process = None
   def startStereoRecord(self, inputSource: str=f"{Conf.sinkName}.monitor"):
     "Records dual-channel stereo (Left=Interviewer, Right=Candidate)."
@@ -530,7 +532,7 @@ class AudioCapture(LogShellUser):
 
 class AudioTranscription(LogShellUser):
   "Manages whisper-stream live transcription and post-call Python Whisper execution."
-  def __init__(self, whisperCppDir: str=Conf.whisperCppDir, logShell: ScriptLogShell=ScriptLogShell()):
+  def __init__(self, whisperCppDir: str=Conf.whisperCppDir, logShell: ScriptLogShell=None):
     super().__init__(logShell); self.whisperCppDir = Path(whisperCppDir).resolve()
     self.stream_bin = self.whisperCppDir / "build" / "bin" / "whisper-stream"; self.stream_process = None
   def launchTranscription(self, outputTextFile: str):
