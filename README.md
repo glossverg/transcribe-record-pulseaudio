@@ -22,6 +22,7 @@ capture + local Whisper AI transcription, with no cloud dependency.
 
 ## How script works
 
+```text
 applications (browser, meeting app)
 │ playback
 ▼
@@ -29,7 +30,7 @@ call_mix (PulseAudio null sink)  ◄── loopback: your microphone
 │ monitor source (call_mix.monitor)
 ├──► ffmpeg ──► stereo WAV (Left = host, Right = you)
 └──► whisper-stream ──► live transcript file
-
+```
 
 - Creates a virtual sink (`call_mix`) and loopbacks to mix application audio
   and your microphone into one stereo stream.
