@@ -91,6 +91,12 @@ All defaults live in the frozen `AudioConfig` dataclass (`Conf`):
 | `whisperModelName` | `base.en` | Python Whisper model for post-processing |
 | `outputAudioFileStem` / `outputTranscribeFileStem` | see file | Output file prefixes |
 
+## Pavucontrol example
+
+Screenshot of real mixing shown across 4 pavucontrol windows displaying 4 tabs with record + transcribe running by script:
+
+<img width="1910" height="1038" alt="pavucontrolExampleTranscribe" src="https://github.com/user-attachments/assets/5d7d95f3-fb93-4b41-a096-c01a2590acfb" />
+
 ## Limitations
 
 - Keyword-based device matching: if a keyword matches nothing, that loopback
@@ -105,6 +111,7 @@ The code is organized around small protocol interfaces (`LoggerProtocol`,
 `ShellProtocol`) with dependency injection, which makes the PulseAudio and
 ffmpeg interaction testable without a running audio server. A `NullLogger`
 is provided for silent/test runs.
+
 
 ## A note on how script was built
 
