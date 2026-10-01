@@ -67,9 +67,13 @@ vanishes mid-call, script re-creates automatically.
      (`pactl list sinks short`)
    - `playbackCaptureApplicationNameKeywords` — default `("chrome",)`; the
      app whose audio you want captured
-2. Start the app you want to capture (so app playback stream exists), then run: `python3 TranscribeRecordApplicationAudio.py`
+2. To use python terminal copy/paste script into terminal.
+   Start the app you want to capture (so app playback stream exists, or don't and start after).
+   Build a script runner class examples shown at top of script. 
+   To use bash terminal run: `python3 TranscribeRecordApplicationAudio.py` after setting up your `main()`.
 3. Watch the live transcript file (named `transcribeAppByScript_<timestamp>.txt`)
-   update during the call.
+   update during the call. Transcript prints inside python terminal.
+   Logs go to configured log file.
 4. Press **Ctrl+C** to stop. Cleanup (PulseAudio modules, ffmpeg,
    whisper-stream) runs automatically, and the post-call transcript is written
    as `transcribeAppByScript_combine.txt` with HOST and USER sections.
@@ -118,6 +122,7 @@ is provided for silent/test runs.
 The first draft of script was generated with AI assistance (Gemini Flash).
 Code been reviewed line-by-line, tested on a live system,
 restructured, and is maintained by a human. Bug reports and PRs welcome.
+Moonshot Kimi generated README and tests first draft.
 
 ## License
 
