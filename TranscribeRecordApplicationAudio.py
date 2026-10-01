@@ -21,6 +21,9 @@ def transcribeRecordApplicationAudioScriptExample1():
 def recordApplicationAudioScriptExample1():
   script = AppAudioRecord(); script.stereoRecordApp(); return script
 
+def micRecordTranscribeScriptExample1():
+  script = MicRecordTranscribe(); script.recordTranscribeMic(); return script
+
 """
 Some terms:
   PulseAudio: Utility server to route and mix audio on linux.
@@ -364,6 +367,43 @@ class AppAudioRecord(AppRecordBase):
     return self
 # class AppAudioRecord
 
+class MicRecordTranscribe:
+  "Record a hardware microphone directly with live Whisper transcription."
+  def __init__(self, microphoneDeviceNameKeyword: str=Conf.microphoneDeviceNameKeyword,
+   whisperCppDir: str=Conf.whisperCppDir, whisperModelName: str=Conf.whisperModelName):
+    self.logShell = ScriptLogShell()
+    self.mixer = PulseAudioMixer(logShell=self.logShell)
+    self.recorder = AudioCapture(self.logShell)
+    self.transcriber = AudioTranscription(whisperCppDir=whisperCppDir, logShell=self.logShell)
+    self.micKeyword = microphoneDeviceNameKeyword
+    self.whisperModelName = whisperModelName
+
+  def recordTranscribeMic(self) -> "MicRecordTranscribe":
+    try:
+      self.recordTranscribeMicStart(); print("Press ctrl+C to stop")
+      while True: time.sleep(1)
+    except KeyboardInterrupt: print("Recording stopped by key interrupt")
+    finally:
+      print(f"Loaded PulseAudio module ids upon stop {self.mixer.loadedModules}")
+      self.transcriber.stopLiveStream(); self.recorder.stopRecording()
+      self.mixer.unloadPulseaudioModulesCreatedBySession()
+      self.transcriber.postprocessStereoHostUserAudioToFile(self.logShell.outputAudioFile,
+       self.whisperModelName)
+    return self
+
+  def recordTranscribeMicStart(self) -> "MicRecordTranscribe":
+    self.logShell.refresh()
+    self.mixer.createNullSink()
+    self.mixer.routeMicLoopbackToCallMixByKeywordSearch(self.micKeyword)
+    time.sleep(2)  # let PulseAudio settle
+    self.recorder.startStereoRecord(self.mixer.sinkName + ".monitor")
+    time.sleep(2)  # let ffmpeg register as a recording stream
+    moved = self.mixer.routeAppRecordingToCallMixMonitor(["ffmpeg", "lavf", "whisper"])
+    self.transcriber.startLiveStream(self.logShell.transcribeFile)
+    print(f"\n=== Mic recording to {self.logShell.outputAudioFile} ===")
+    print(f"=== Live transcript: {self.logShell.transcribeFile} ===\n")
+    return self
+# class MicRecordTranscribe
 
 #
 # Script components
