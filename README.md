@@ -67,7 +67,8 @@ vanishes mid-call, script re-creates automatically.
      (`pactl list sinks short`)
    - `playbackCaptureApplicationNameKeywords` — default `("chrome",)`; the
      app whose audio you want captured
-2. To use python terminal copy/paste script into terminal.
+2. To use python terminal copy/paste script file into python terminal like IPython
+   without `if __name__ == "__main__"` example.
    Start the app you want to capture (so app playback stream exists, or don't and start after).
    Build a script runner class examples shown at top of script. 
    To use bash terminal run: `python3 TranscribeRecordApplicationAudio.py` after setting up your `main()`.
