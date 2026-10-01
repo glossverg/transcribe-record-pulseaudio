@@ -15,10 +15,10 @@ import shlex
 def main():
   return transcribeRecordApplicationAudioScriptExample1()
 
-def transcribeRecordApplicationAudioScriptExample1(self):
+def transcribeRecordApplicationAudioScriptExample1():
   script = AppAudioRecordTranscribe(); script.stereoRecordTranscribeApp(); return script
 
-def recordApplicationAudioScriptExample1(self):
+def recordApplicationAudioScriptExample1():
   script = AppAudioRecord(); script.stereoRecordApp(); return script
 
 """
